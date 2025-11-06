@@ -1,0 +1,4 @@
+-- 为旧件表添加数量字段
+ALTER TABLE old_parts 
+ADD COLUMN IF NOT EXISTS qty DECIMAL(10, 2) DEFAULT 1;
+
