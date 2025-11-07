@@ -31,7 +31,7 @@ export class MaintenanceTask extends BaseEntity {
   assignee: User;
 
   @Column({ default: 'pending', length: 20 })
-  status: string; // 'pending', 'in_progress', 'completed', 'cancelled', 'overdue'
+  status: string; // 'pending', 'in_progress', 'pending_acceptance', 'completed', 'cancelled', 'overdue'
 
   @Column({ name: 'started_at', type: 'timestamp', nullable: true })
   startedAt: Date;
@@ -53,5 +53,18 @@ export class MaintenanceTask extends BaseEntity {
 
   @Column({ type: 'text', nullable: true })
   notes: string;
+
+  @Column({ name: 'review_notes', type: 'text', nullable: true })
+  reviewNotes: string;
+
+  @Column({ name: 'reviewed_at', type: 'timestamp', nullable: true })
+  reviewedAt: Date;
+
+  @Column({ name: 'reviewed_by', nullable: true })
+  reviewedBy: number;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'reviewed_by' })
+  reviewer: User;
 }
 

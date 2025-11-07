@@ -49,6 +49,10 @@ export interface MaintenanceTask {
   abnormalWorkOrderId?: number;
   attachments?: string[];
   notes?: string;
+  reviewNotes?: string;
+  reviewedAt?: string;
+  reviewedBy?: number;
+  reviewer?: any;
 }
 
 export const maintenanceService = {
@@ -88,6 +92,9 @@ export const maintenanceService = {
   },
   generateTasks(planId: number, data?: { scheduledAt?: string; deviceIds?: number[] }): Promise<MaintenanceTask[]> {
     return api.post(`/maintenance/plans/${planId}/generate-tasks`, data || {});
+  },
+  reviewTask(taskId: number, data: { pass: boolean; notes?: string }): Promise<MaintenanceTask> {
+    return api.post(`/maintenance/tasks/${taskId}/review`, data);
   },
   getStatistics(): Promise<any> {
     return api.get('/maintenance/statistics');

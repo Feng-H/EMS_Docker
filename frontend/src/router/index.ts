@@ -62,8 +62,47 @@ const router = createRouter({
       children: [
         {
           path: '',
-          name: 'MobileHome',
-          component: () => import('@/views/mobile/Home.vue'),
+          redirect: '/mobile/maintenance/tasks',
+        },
+        {
+          path: 'maintenance',
+          redirect: '/mobile/maintenance/tasks',
+        },
+        {
+          path: 'maintenance/tasks',
+          name: 'MobileMaintenanceTasks',
+          component: () => import('@/views/mobile/MaintenanceTasks.vue'),
+          meta: { title: '保养任务' },
+        },
+        {
+          path: 'maintenance/tasks/:id',
+          name: 'MobileMaintenanceTaskDetail',
+          component: () => import('@/views/mobile/MaintenanceTaskDetail.vue'),
+          meta: { title: '保养任务详情' },
+        },
+        {
+          path: 'work-orders',
+          name: 'MobileWorkOrders',
+          component: () => import('@/views/mobile/RepairWorkOrders.vue'),
+          meta: { title: '维修工单' },
+        },
+        {
+          path: 'work-orders/:id',
+          name: 'MobileWorkOrderDetail',
+          component: () => import('@/views/mobile/RepairWorkOrderDetail.vue'),
+          meta: { title: '维修工单详情' },
+        },
+        {
+          path: 'work-orders/report',
+          name: 'MobileRepairReport',
+          component: () => import('@/views/mobile/RepairReport.vue'),
+          meta: { title: '设备报修' },
+        },
+        {
+          path: 'work-orders/history',
+          name: 'MobileRepairHistory',
+          component: () => import('@/views/mobile/RepairHistory.vue'),
+          meta: { title: '维修记录' },
         },
       ],
     },

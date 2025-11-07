@@ -1,10 +1,43 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store/auth';
 
+const resolveDefaultBaseURL = () => {
+  const configured = import.meta.env.VITE_API_BASE_URL;
+  if (configured && typeof window === 'undefined') {
+    return configured;
+  }
+
+  if (configured && typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    const isLocalConfigured = /^(https?:\/\/)?(localhost|127\.0\.0\.1)/i.test(configured);
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1';
+
+    if (!isLocalConfigured || isLocalHost) {
+      return configured;
+    }
+    // 如果配置指向 localhost 但当前访问主机不是 localhost，则按当前主机重写
+  }
+
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname, port } = window.location;
+    // 开发环境默认指向 3000 端口的后端，避免移动端访问时仍使用 localhost
+    if (port && port !== '80' && port !== '443') {
+      return `${protocol}//${hostname}:3000/api`;
+    }
+    return `${protocol}//${hostname}${port ? `:${port}` : ''}/api`;
+  }
+
+  return '/api';
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: resolveDefaultBaseURL(),
   timeout: 10000,
 });
+
+if (typeof window !== 'undefined') {
+  console.log('[EMS] API BaseURL:', api.defaults.baseURL);
+}
 
 // 请求拦截器
 api.interceptors.request.use(

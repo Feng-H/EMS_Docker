@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { MaintenanceService } from './maintenance.service';
 import { CreateMaintenancePlanDto } from './dto/create-maintenance-plan.dto';
 import { SubmitMaintenanceTaskDto } from './dto/submit-maintenance-task.dto';
+import { ReviewMaintenanceTaskDto } from './dto/review-maintenance-task.dto';
 import { GenerateTasksDto } from './dto/generate-tasks.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -66,6 +67,12 @@ export class MaintenanceController {
   @ApiOperation({ summary: '提交保养任务执行结果' })
   submitTask(@Param('id') id: string, @Body() submitDto: SubmitMaintenanceTaskDto, @Request() req) {
     return this.maintenanceService.submitTask(+id, submitDto, req.user.userId);
+  }
+
+  @Post('tasks/:id/review')
+  @ApiOperation({ summary: '保养任务验收' })
+  reviewTask(@Param('id') id: string, @Body() reviewDto: ReviewMaintenanceTaskDto, @Request() req) {
+    return this.maintenanceService.reviewTask(+id, reviewDto, req.user.userId);
   }
 
   @Post('plans/:id/bind-devices')

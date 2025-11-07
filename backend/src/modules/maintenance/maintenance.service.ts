@@ -9,6 +9,7 @@ import { CreateMaintenancePlanDto } from './dto/create-maintenance-plan.dto';
 import { SubmitMaintenanceTaskDto } from './dto/submit-maintenance-task.dto';
 import { WorkOrdersService } from '../work-orders/work-orders.service';
 import { Device } from '../devices/entities/device.entity';
+import { ReviewMaintenanceTaskDto } from './dto/review-maintenance-task.dto';
 
 @Injectable()
 export class MaintenanceService {
@@ -555,9 +556,12 @@ export class MaintenanceService {
     // 更新任务状态和结果
     task.result = submitDto.results;
     task.hasAbnormal = abnormalItems.length > 0;
-    task.status = 'completed';
+    task.status = 'pending_acceptance';
     task.finishedAt = new Date();
     task.notes = submitDto.notes;
+    task.reviewNotes = null;
+    task.reviewedAt = null;
+    task.reviewedBy = null;
     if (submitDto.attachments) {
       task.attachments = submitDto.attachments;
     }
@@ -584,13 +588,39 @@ export class MaintenanceService {
     return this.tasksRepository.save(task);
   }
 
+  async reviewTask(taskId: number, reviewDto: ReviewMaintenanceTaskDto, userId: number): Promise<MaintenanceTask> {
+    const task = await this.tasksRepository.findOne({ where: { id: taskId } });
+
+    if (!task) {
+      throw new NotFoundException(`保养任务 ID ${taskId} 不存在`);
+    }
+
+    if (task.status !== 'pending_acceptance') {
+      throw new BadRequestException('当前任务并非待验收状态');
+    }
+
+    task.reviewNotes = reviewDto.notes || null;
+    task.reviewedAt = new Date();
+    task.reviewedBy = userId;
+
+    if (reviewDto.pass) {
+      task.status = 'completed';
+    } else {
+      task.status = 'in_progress';
+      task.finishedAt = null;
+    }
+
+    return this.tasksRepository.save(task);
+  }
+
   async getStatistics() {
-    const [totalTasks, pendingTasks, inProgressTasks, completedTasks, overdueTasks, totalPlans, activePlans] = await Promise.all([
+    const [totalTasks, pendingTasks, inProgressTasks, completedTasks, overdueTasks, pendingAcceptanceTasks, totalPlans, activePlans] = await Promise.all([
       this.tasksRepository.count(),
       this.tasksRepository.count({ where: { status: 'pending' } }),
       this.tasksRepository.count({ where: { status: 'in_progress' } }),
       this.tasksRepository.count({ where: { status: 'completed' } }),
       this.tasksRepository.count({ where: { status: 'overdue' } }),
+      this.tasksRepository.count({ where: { status: 'pending_acceptance' } }),
       this.plansRepository.count(),
       this.plansRepository.count({ where: { active: true } }),
     ]);
@@ -601,6 +631,7 @@ export class MaintenanceService {
       inProgressTasks,
       completedTasks,
       overdueTasks,
+      pendingAcceptanceTasks,
       totalPlans,
       activePlans,
     };
