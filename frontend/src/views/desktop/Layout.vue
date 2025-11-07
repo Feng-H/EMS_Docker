@@ -2,7 +2,13 @@
   <el-container class="desktop-layout">
     <el-header>
       <div class="header-content">
-        <h1>设备管理系统</h1>
+        <div class="header-left">
+          <el-button circle type="primary" class="collapse-btn" @click="toggleCollapse">
+            <el-icon v-if="isCollapsed"><Expand /></el-icon>
+            <el-icon v-else><Fold /></el-icon>
+          </el-button>
+          <h1>设备管理系统</h1>
+        </div>
         <div class="user-info">
           <el-dropdown @command="handleCommand">
             <span class="user-dropdown">
@@ -27,22 +33,22 @@
       </div>
     </el-header>
     <el-container>
-      <el-aside width="200px">
-        <el-menu :default-active="activeMenu" router>
+      <el-aside :width="isCollapsed ? '64px' : '200px'" class="sidebar">
+        <el-menu :default-active="activeMenu" router :collapse="isCollapsed" :collapse-transition="false">
           <el-menu-item index="/desktop">
             <el-icon><HomeFilled /></el-icon>
             <span>首页</span>
           </el-menu-item>
           <el-menu-item index="/desktop/devices">
-            <el-icon><Setting /></el-icon>
+            <el-icon><Notebook /></el-icon>
             <span>设备台账</span>
           </el-menu-item>
           <el-menu-item index="/desktop/maintenance">
-            <el-icon><Tools /></el-icon>
+            <el-icon><Brush /></el-icon>
             <span>保养管理</span>
           </el-menu-item>
           <el-menu-item index="/desktop/work-orders">
-            <el-icon><Document /></el-icon>
+            <el-icon><Tools /></el-icon>
             <span>维修管理</span>
           </el-menu-item>
           <el-menu-item index="/desktop/spare-parts">
@@ -119,7 +125,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessageBox, ElMessage, ElDialog, ElForm, ElFormItem, ElInput, ElButton } from 'element-plus';
 import { useAuthStore } from '@/store/auth';
 import { userService, type ChangePasswordDto } from '@/services/users';
-import { HomeFilled, Setting, Tools, Document, Box, User, OfficeBuilding, ArrowDown, SwitchButton, Lock } from '@element-plus/icons-vue';
+import { HomeFilled, Notebook, Brush, Tools, Box, User, OfficeBuilding, ArrowDown, SwitchButton, Lock, Fold, Expand } from '@element-plus/icons-vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -132,6 +138,12 @@ const canAccessUsers = computed(() => {
   const role = authStore.user?.role?.name || authStore.user?.role;
   return role === '工程师' || role === 'admin';
 });
+
+const isCollapsed = ref(false);
+
+const toggleCollapse = () => {
+  isCollapsed.value = !isCollapsed.value;
+};
 
 const passwordDialogVisible = ref(false);
 const passwordFormRef = ref();
@@ -242,6 +254,28 @@ const handleClosePasswordDialog = () => {
   align-items: center;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-left h1 {
+  font-size: 20px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.collapse-btn {
+  border: none;
+  background-color: rgba(255, 255, 255, 0.2);
+  transition: background-color 0.3s;
+}
+
+.collapse-btn:hover {
+  background-color: rgba(255, 255, 255, 0.35);
+}
+
 .user-info {
   display: flex;
   align-items: center;
@@ -263,8 +297,10 @@ const handleClosePasswordDialog = () => {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-.el-aside {
+.sidebar {
   background: #f5f5f5;
+  transition: width 0.3s;
+  border-right: 1px solid #ebeef5;
 }
 
 .el-main {

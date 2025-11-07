@@ -1,9 +1,15 @@
 <template>
-  <div class="dashboard-container">
+  <div class="dashboard-container" ref="dashboardRef">
     <!-- 顶部标题栏 -->
     <div class="dashboard-header">
       <h1 class="dashboard-title">设备管理系统 - 数据大屏</h1>
-      <div class="dashboard-time">{{ currentTime }}</div>
+      <div class="dashboard-actions">
+        <div class="dashboard-time">{{ currentTime }}</div>
+        <el-button type="primary" plain @click="toggleFullscreen">
+          <el-icon style="margin-right: 6px"><component :is="isFullscreen ? Close : FullScreen" /></el-icon>
+          {{ isFullscreen ? '退出全屏' : '全屏展示' }}
+        </el-button>
+      </div>
     </div>
 
     <!-- 统计卡片区域 -->
@@ -139,7 +145,7 @@ import { maintenanceService } from '@/services/maintenance';
 import { workOrderService } from '@/services/workOrders';
 import { sparePartService } from '@/services/spareParts';
 import { userService } from '@/services/users';
-import { Setting, Tools, Document, Box, User } from '@element-plus/icons-vue';
+import { Setting, Tools, Document, Box, User, FullScreen, Close } from '@element-plus/icons-vue';
 
 const authStore = useAuthStore();
 
@@ -148,6 +154,7 @@ const deviceStats = ref<any>({});
 const maintenanceStats = ref<any>({});
 const workOrderStats = ref<any>({});
 const sparePartStats = ref<any>({});
+const lowStockParts = ref<any[]>([]);
 const userStats = ref<any>({});
 
 // 图表引用
@@ -168,6 +175,10 @@ let userChart: any = null;
 const currentTime = ref('');
 let timeInterval: number | null = null;
 
+// 全屏状态
+const dashboardRef = ref<HTMLElement>();
+const isFullscreen = ref(false);
+
 // 更新时间
 const updateTime = () => {
   const now = new Date();
@@ -181,16 +192,43 @@ const updateTime = () => {
   });
 };
 
+const toggleFullscreen = async () => {
+  if (!dashboardRef.value) return;
+  try {
+    if (!isFullscreen.value) {
+      if (dashboardRef.value.requestFullscreen) {
+        await dashboardRef.value.requestFullscreen();
+      } else {
+        console.warn('当前浏览器不支持全屏 API');
+      }
+    } else {
+      if (document.exitFullscreen) {
+        await document.exitFullscreen();
+      }
+    }
+  } catch (error) {
+    console.error('切换全屏失败:', error);
+  }
+};
+
+const handleFullscreenChange = () => {
+  isFullscreen.value = !!document.fullscreenElement;
+  setTimeout(() => {
+    handleResize();
+  }, 200);
+};
+
 // 加载统计数据
 const loadStatistics = async () => {
   try {
     console.log('开始加载统计数据...');
-    const [deviceData, maintenanceData, workOrderData, sparePartData, userData] = await Promise.all([
+    const [deviceData, maintenanceData, workOrderData, sparePartData, userData, lowStockData] = await Promise.all([
       deviceService.getStatistics().catch(err => { console.error('设备统计失败:', err); return {}; }),
       maintenanceService.getStatistics().catch(err => { console.error('保养统计失败:', err); return {}; }),
       workOrderService.getStatistics().catch(err => { console.error('工单统计失败:', err); return {}; }),
       sparePartService.getStatistics().catch(err => { console.error('备件统计失败:', err); return {}; }),
       userService.getStatistics().catch(err => { console.error('人员统计失败:', err); return {}; }),
+      sparePartService.getLowStock().catch(err => { console.error('低库存备件获取失败:', err); return []; }),
     ]);
 
     console.log('统计数据加载完成:', {
@@ -205,6 +243,7 @@ const loadStatistics = async () => {
     maintenanceStats.value = maintenanceData;
     workOrderStats.value = workOrderData;
     sparePartStats.value = sparePartData;
+    lowStockParts.value = Array.isArray(lowStockData) ? lowStockData : [];
     userStats.value = userData;
 
     // 更新图表
@@ -224,95 +263,97 @@ const updateCharts = () => {
         deviceChart = echarts.init(deviceChartRef.value);
       }
       deviceChart.setOption({
-      tooltip: {
-        trigger: 'item',
-      },
-      legend: {
-        orient: 'vertical',
-        left: 'left',
-        textStyle: { color: '#fff' },
-      },
-      series: [
-        {
-          name: '设备状态',
-          type: 'pie',
-          radius: ['40%', '70%'],
-          avoidLabelOverlap: false,
-          itemStyle: {
-            borderRadius: 10,
-            borderColor: '#1a1a2e',
-            borderWidth: 2,
-          },
-          label: {
-            show: true,
-            color: '#fff',
-          },
-          emphasis: {
+        tooltip: {
+          trigger: 'item',
+        },
+        legend: {
+          top: '5%',
+          left: 'center',
+          textStyle: { color: '#fff' },
+        },
+        series: [
+          {
+            name: '设备状态',
+            type: 'pie',
+            radius: ['45%', '70%'],
+            center: ['50%', '60%'],
+            avoidLabelOverlap: false,
+            itemStyle: {
+              borderRadius: 10,
+              borderColor: '#1a1a2e',
+              borderWidth: 2,
+            },
             label: {
               show: true,
-              fontSize: 16,
-              fontWeight: 'bold',
+              color: '#fff',
             },
+            emphasis: {
+              label: {
+                show: true,
+                fontSize: 16,
+                fontWeight: 'bold',
+              },
+            },
+            data: [
+              { value: deviceStats.value.inUse || 0, name: '在用', itemStyle: { color: '#67c23a' } },
+              { value: deviceStats.value.trialRun || 0, name: '试运行', itemStyle: { color: '#409eff' } },
+              { value: deviceStats.value.debugging || 0, name: '调试', itemStyle: { color: '#e6a23c' } },
+              { value: deviceStats.value.sealed || 0, name: '封存', itemStyle: { color: '#909399' } },
+              { value: deviceStats.value.scrapped || 0, name: '报废', itemStyle: { color: '#f56c6c' } },
+            ],
           },
-          data: [
-            { value: deviceStats.value.inUse || 0, name: '在用', itemStyle: { color: '#67c23a' } },
-            { value: deviceStats.value.trialRun || 0, name: '试运行', itemStyle: { color: '#409eff' } },
-            { value: deviceStats.value.debugging || 0, name: '调试', itemStyle: { color: '#e6a23c' } },
-            { value: deviceStats.value.sealed || 0, name: '封存', itemStyle: { color: '#909399' } },
-            { value: deviceStats.value.scrapped || 0, name: '报废', itemStyle: { color: '#f56c6c' } },
-          ],
-        },
-      ],
-    });
+        ],
+      });
     }
 
     // 保养任务状态图
     if (maintenanceChartRef.value && maintenanceStats.value && Object.keys(maintenanceStats.value).length > 0) {
-    if (!maintenanceChart) {
-      maintenanceChart = echarts.init(maintenanceChartRef.value);
-    }
-    maintenanceChart.setOption({
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: {
-          type: 'shadow',
-        },
-      },
-      grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '3%',
-        containLabel: true,
-      },
-      xAxis: {
-        type: 'category',
-        data: ['待处理', '进行中', '已完成', '已逾期'],
-        axisLabel: { color: '#fff' },
-      },
-      yAxis: {
-        type: 'value',
-        axisLabel: { color: '#fff' },
-      },
-      series: [
-        {
-          name: '任务数量',
-          type: 'bar',
-          data: [
-            maintenanceStats.value.pendingTasks || 0,
-            maintenanceStats.value.inProgressTasks || 0,
-            maintenanceStats.value.completedTasks || 0,
-            maintenanceStats.value.overdueTasks || 0,
-          ],
-          itemStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#83bff6' },
-              { offset: 0.5, color: '#188df0' },
-              { offset: 1, color: '#188df0' },
-            ]),
+      if (!maintenanceChart) {
+        maintenanceChart = echarts.init(maintenanceChartRef.value);
+      }
+      maintenanceChart.setOption({
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow',
           },
         },
-      ],
-    });
+        grid: {
+          top: '12%',
+          left: '4%',
+          right: '4%',
+          bottom: '6%',
+          containLabel: true,
+        },
+        xAxis: {
+          type: 'category',
+          data: ['待处理', '进行中', '已完成', '已逾期'],
+          axisLabel: { color: '#fff' },
+        },
+        yAxis: {
+          type: 'value',
+          axisLabel: { color: '#fff' },
+        },
+        series: [
+          {
+            name: '任务数量',
+            type: 'bar',
+            data: [
+              maintenanceStats.value.pendingTasks || 0,
+              maintenanceStats.value.inProgressTasks || 0,
+              maintenanceStats.value.completedTasks || 0,
+              maintenanceStats.value.overdueTasks || 0,
+            ],
+            itemStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: '#83bff6' },
+                { offset: 0.5, color: '#188df0' },
+                { offset: 1, color: '#188df0' },
+              ]),
+            },
+          },
+        ],
+      });
     }
 
     // 维修工单状态图
@@ -320,72 +361,116 @@ const updateCharts = () => {
       if (!workOrderChart) {
         workOrderChart = echarts.init(workOrderChartRef.value);
       }
-    workOrderChart.setOption({
-      tooltip: {
-        trigger: 'item',
-      },
-      legend: {
-        bottom: '5%',
-        left: 'center',
-        textStyle: { color: '#fff' },
-      },
-      series: [
-        {
-          name: '工单状态',
-          type: 'pie',
-          radius: '60%',
-          data: [
-            { value: workOrderStats.value.created || 0, name: '已创建', itemStyle: { color: '#909399' } },
-            { value: workOrderStats.value.assigned || 0, name: '已分配', itemStyle: { color: '#409eff' } },
-            { value: workOrderStats.value.accepted || 0, name: '已接受', itemStyle: { color: '#e6a23c' } },
-            { value: workOrderStats.value.inProgress || 0, name: '进行中', itemStyle: { color: '#67c23a' } },
-            { value: workOrderStats.value.pendingAcceptance || 0, name: '待验收', itemStyle: { color: '#f56c6c' } },
-            { value: workOrderStats.value.completed || 0, name: '已完成', itemStyle: { color: '#13ce66' } },
-          ],
-          emphasis: {
-            itemStyle: {
-              shadowBlur: 10,
-              shadowOffsetX: 0,
-              shadowColor: 'rgba(0, 0, 0, 0.5)',
+      workOrderChart.setOption({
+        tooltip: {
+          trigger: 'item',
+        },
+        legend: {
+          top: '5%',
+          left: 'center',
+          textStyle: { color: '#fff' },
+        },
+        series: [
+          {
+            name: '工单状态',
+            type: 'pie',
+            radius: '55%',
+            center: ['50%', '60%'],
+            data: [
+              { value: workOrderStats.value.created || 0, name: '已创建', itemStyle: { color: '#909399' } },
+              { value: workOrderStats.value.assigned || 0, name: '已分配', itemStyle: { color: '#409eff' } },
+              { value: workOrderStats.value.accepted || 0, name: '已接受', itemStyle: { color: '#e6a23c' } },
+              { value: workOrderStats.value.inProgress || 0, name: '进行中', itemStyle: { color: '#67c23a' } },
+              { value: workOrderStats.value.pendingAcceptance || 0, name: '待验收', itemStyle: { color: '#f56c6c' } },
+              { value: workOrderStats.value.completed || 0, name: '已完成', itemStyle: { color: '#13ce66' } },
+            ],
+            emphasis: {
+              itemStyle: {
+                shadowBlur: 10,
+                shadowOffsetX: 0,
+                shadowColor: 'rgba(0, 0, 0, 0.5)',
+              },
             },
           },
-        },
-      ],
-    });
+        ],
+      });
     }
 
     // 备件库存预警图
-    if (sparePartChartRef.value && sparePartStats.value && Object.keys(sparePartStats.value).length > 0) {
+    if (sparePartChartRef.value) {
       if (!sparePartChart) {
         sparePartChart = echarts.init(sparePartChartRef.value);
       }
-    const normalStock = (sparePartStats.value.total || 0) - (sparePartStats.value.lowStock || 0);
-    sparePartChart.setOption({
-      tooltip: {
-        trigger: 'item',
-      },
-      series: [
-        {
-          name: '库存状态',
-          type: 'pie',
-          radius: ['50%', '70%'],
-          avoidLabelOverlap: false,
-          itemStyle: {
-            borderRadius: 10,
-            borderColor: '#1a1a2e',
-            borderWidth: 2,
+      if (lowStockParts.value.length > 0) {
+        const categories = lowStockParts.value.map((item) => item.name || item.partNo);
+        const stockValues = lowStockParts.value.map((item) => Number(item.stockQty) || 0);
+        const minValues = lowStockParts.value.map((item) => Number(item.minStock) || 0);
+
+        sparePartChart.setOption({
+          tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'shadow' },
           },
-          label: {
-            show: true,
-            color: '#fff',
+          legend: {
+            top: '5%',
+            left: 'center',
+            textStyle: { color: '#fff' },
           },
-          data: [
-            { value: normalStock, name: '正常库存', itemStyle: { color: '#67c23a' } },
-            { value: sparePartStats.value.lowStock || 0, name: '低库存', itemStyle: { color: '#f56c6c' } },
+          grid: {
+            top: '18%',
+            left: '6%',
+            right: '6%',
+            bottom: '10%',
+            containLabel: true,
+          },
+          xAxis: {
+            type: 'value',
+            axisLabel: { color: '#fff' },
+            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+          },
+          yAxis: {
+            type: 'category',
+            data: categories,
+            axisLabel: {
+              color: '#fff',
+              width: 120,
+              overflow: 'truncate',
+            },
+          },
+          series: [
+            {
+              name: '预警库存',
+              type: 'bar',
+              data: minValues,
+              itemStyle: {
+                color: '#f56c6c',
+              },
+              barWidth: 14,
+            },
+            {
+              name: '当前库存',
+              type: 'bar',
+              data: stockValues,
+              itemStyle: {
+                color: '#67c23a',
+              },
+              barWidth: 14,
+            },
           ],
-        },
-      ],
-    });
+        });
+      } else {
+        sparePartChart.setOption({
+          title: {
+            text: '暂无低库存预警',
+            left: 'center',
+            top: 'middle',
+            textStyle: { color: '#fff', fontSize: 16 },
+          },
+          tooltip: {},
+          legend: {},
+          series: [],
+        });
+      }
     }
 
     // 人员角色分布图
@@ -393,35 +478,36 @@ const updateCharts = () => {
       if (!userChart) {
         userChart = echarts.init(userChartRef.value);
       }
-    const roleData = (userStats.value.roleStats || []).map((r: any) => ({
-      value: r.count,
-      name: r.role,
-    }));
-    userChart.setOption({
-      tooltip: {
-        trigger: 'item',
-      },
-      legend: {
-        orient: 'vertical',
-        left: 'left',
-        textStyle: { color: '#fff' },
-      },
-      series: [
-        {
-          name: '角色分布',
-          type: 'pie',
-          radius: '50%',
-          data: roleData,
-          emphasis: {
-            itemStyle: {
-              shadowBlur: 10,
-              shadowOffsetX: 0,
-              shadowColor: 'rgba(0, 0, 0, 0.5)',
+      const roleData = (userStats.value.roleStats || []).map((r: any) => ({
+        value: r.count,
+        name: r.role,
+      }));
+      userChart.setOption({
+        tooltip: {
+          trigger: 'item',
+        },
+        legend: {
+          top: '5%',
+          left: 'center',
+          textStyle: { color: '#fff' },
+        },
+        series: [
+          {
+            name: '角色分布',
+            type: 'pie',
+            radius: '55%',
+            center: ['50%', '60%'],
+            data: roleData,
+            emphasis: {
+              itemStyle: {
+                shadowBlur: 10,
+                shadowOffsetX: 0,
+                shadowColor: 'rgba(0, 0, 0, 0.5)',
+              },
             },
           },
-        },
-      ],
-    });
+        ],
+      });
     }
   }, 100); // 延迟100ms确保DOM已更新
 };
@@ -440,6 +526,7 @@ onMounted(() => {
   timeInterval = window.setInterval(updateTime, 1000);
   loadStatistics();
   window.addEventListener('resize', handleResize);
+  document.addEventListener('fullscreenchange', handleFullscreenChange);
   
   // 每30秒刷新一次数据
   const refreshInterval = setInterval(() => {
@@ -456,6 +543,7 @@ onUnmounted(() => {
     clearInterval(timeInterval);
   }
   window.removeEventListener('resize', handleResize);
+  document.removeEventListener('fullscreenchange', handleFullscreenChange);
   deviceChart?.dispose();
   maintenanceChart?.dispose();
   workOrderChart?.dispose();
@@ -468,23 +556,27 @@ onUnmounted(() => {
 .dashboard-container {
   padding: 20px;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  min-height: 100vh;
   color: #fff;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  gap: 20px;
 }
 
 .dashboard-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
-  padding: 20px;
+  padding: 16px 20px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 10px;
   backdrop-filter: blur(10px);
+  gap: 12px;
 }
 
 .dashboard-title {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: bold;
   margin: 0;
   background: linear-gradient(90deg, #409eff, #67c23a);
@@ -493,28 +585,37 @@ onUnmounted(() => {
   background-clip: text;
 }
 
+.dashboard-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .dashboard-time {
-  font-size: 20px;
+  font-size: 18px;
   color: #67c23a;
   font-weight: bold;
 }
 
 .stats-row {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 20px;
-  margin-bottom: 30px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
 }
 
 .stat-card {
   display: flex;
   align-items: center;
-  padding: 20px;
+  padding: 16px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.3s;
+  min-width: 180px;
+  flex: 1 1 200px;
+  box-sizing: border-box;
 }
 
 .stat-card:hover {
@@ -558,37 +659,41 @@ onUnmounted(() => {
 }
 
 .stat-value {
-  font-size: 32px;
+  font-size: 26px;
   font-weight: bold;
   color: #fff;
 }
 
 .charts-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
 }
 
 .charts-left,
 .charts-center,
 .charts-right {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  display: contents;
 }
 
 .chart-card {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 10px;
-  padding: 20px;
+  padding: 16px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
 .chart-title {
   font-size: 18px;
   font-weight: bold;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
   color: #fff;
   text-align: center;
   padding-bottom: 10px;
@@ -597,7 +702,9 @@ onUnmounted(() => {
 
 .chart-container {
   width: 100%;
-  height: 300px;
+  flex: 1;
+  min-height: 220px;
+  min-width: 0;
 }
 
 .user-list {
@@ -608,10 +715,10 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 15px;
+  padding: 12px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
 }
 
 .user-item .el-icon {
@@ -622,7 +729,7 @@ onUnmounted(() => {
 .user-stats {
   display: flex;
   justify-content: space-around;
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 .user-stat-item {
@@ -638,8 +745,49 @@ onUnmounted(() => {
 
 .user-stat-item .value {
   display: block;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: bold;
   color: #67c23a;
+}
+
+@media (max-width: 1200px) {
+  .dashboard-container {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .dashboard-title {
+    font-size: 24px;
+  }
+
+  .dashboard-time {
+    font-size: 16px;
+  }
+
+  .dashboard-actions {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  .chart-container {
+    min-height: 200px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 12px;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .stats-row {
+    gap: 10px;
+  }
 }
 </style>
