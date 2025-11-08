@@ -20,10 +20,6 @@ const resolveDefaultBaseURL = () => {
 
   if (typeof window !== 'undefined') {
     const { protocol, hostname, port } = window.location;
-    // 开发环境默认指向 3000 端口的后端，避免移动端访问时仍使用 localhost
-    if (port && port !== '80' && port !== '443') {
-      return `${protocol}//${hostname}:3000/api`;
-    }
     return `${protocol}//${hostname}${port ? `:${port}` : ''}/api`;
   }
 
