@@ -20,12 +20,18 @@
 ```bash
 git clone https://github.com/Feng-H/EMS_Docker.git
 cd EMS_Docker
-docker compose up -d
-# 浏览器访问 http://localhost:5173
-# 后端文档 http://localhost:3000/api/docs
+docker compose -f docker-compose.prod.yml up -d
+# 浏览器访问 http://<服务器IP或域名>:7080
+# 后端 API 转发到 /api（无需手动指定 localhost）
 ```
 
-更多环境变量说明可参考仓库中的示例配置文件。
+更多环境变量说明可参考仓库中的示例配置文件。部署时务必覆盖 `docker-compose.prod.yml` 中的 `JWT_SECRET`（可通过环境变量或修改 Compose 文件）以保证令牌安全。
+
+## 常见问题
+
+- **JwtStrategy requires a secret or key**：说明容器未获取 `JWT_SECRET`，请在部署环境中设置该变量或在 Compose 中提供安全的默认值。
+- **Bind for 0.0.0.0:80 failed: port is already allocated**：宿主机 80 端口已被占用，可先释放占用端口，或修改 Compose 映射（如 `8080:80`）后重新启动。
+- **默认管理员账号**：后端启动时会自动确保存在 `admin / admin123`（可通过环境变量 `DEFAULT_ADMIN_*` 覆盖）。若需禁用或修改默认密码，请在运行前设置新的环境变量。
 
 ## 许可与开发说明
 

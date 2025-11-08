@@ -1,8 +1,51 @@
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import type { Request } from 'express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { UsersService } from './modules/users/users.service';
+import { ConfigService } from '@nestjs/config';
+import { Role } from './modules/users/entities/role.entity';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+
+async function ensureDefaultAdmin(app: INestApplication) {
+  try {
+    const usersService = app.get(UsersService);
+    const configService = app.get(ConfigService);
+    const roleRepository = app.get<Repository<Role>>(getRepositoryToken(Role));
+
+    const username = configService.get<string>('DEFAULT_ADMIN_USERNAME', 'admin');
+    const password = configService.get<string>('DEFAULT_ADMIN_PASSWORD', 'admin123');
+    const name = configService.get<string>('DEFAULT_ADMIN_NAME', '系统管理员');
+    const employeeNo = configService.get<string>('DEFAULT_ADMIN_EMPLOYEE_NO', 'ADMIN001');
+    const roleName = configService.get<string>('DEFAULT_ADMIN_ROLE', 'admin');
+
+    const exists = await usersService.findByUsername(username);
+    if (exists) {
+      return;
+    }
+
+    const role = await roleRepository.findOne({ where: { name: roleName } });
+    if (!role) {
+      console.warn(`[bootstrap] 未找到名为 ${roleName} 的角色，默认管理员未创建`);
+      return;
+    }
+
+    await usersService.create({
+      username,
+      password,
+      name,
+      employeeNo,
+      roleId: role.id,
+      isActive: true,
+    });
+
+    console.log(`[bootstrap] 已自动创建默认管理员账号：${username}/${password}`);
+  } catch (error) {
+    console.error('[bootstrap] 创建默认管理员账号失败:', error);
+  }
+}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -51,6 +94,8 @@ async function bootstrap() {
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
+
+  await ensureDefaultAdmin(app);
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
