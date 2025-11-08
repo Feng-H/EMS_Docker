@@ -53,7 +53,6 @@ async function ensureDefaultAdmin(app: INestApplication) {
       return;
     }
 
-    const role = await roleRepository.findOne({ where: { name: roleName } });
     if (!role) {
       console.warn(`[bootstrap] 未找到名为 ${roleName} 的角色，正在自动创建默认角色...`);
       role = roleRepository.create({
