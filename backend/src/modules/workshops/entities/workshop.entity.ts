@@ -15,7 +15,7 @@ export class Workshop extends BaseEntity {
   @Column({ length: 200, nullable: true })
   address: string; // 地址
 
-  @Column({ default: true })
+  @Column({ name: 'is_active', default: true })
   isActive: boolean; // 是否启用
 }
 

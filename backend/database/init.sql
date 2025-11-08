@@ -89,7 +89,6 @@ CREATE TABLE IF NOT EXISTS device_parts (
 -- 保养计划表
 CREATE TABLE IF NOT EXISTS maintenance_plans (
     id SERIAL PRIMARY KEY,
-    device_id INTEGER REFERENCES devices(id) ON DELETE CASCADE,
     title VARCHAR(200) NOT NULL,
     description TEXT,
     frequency_type VARCHAR(20) NOT NULL, -- 'daily', 'weekly', 'monthly', 'yearly', 'run_hours'
@@ -102,6 +101,8 @@ CREATE TABLE IF NOT EXISTS maintenance_plans (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE maintenance_plans DROP COLUMN IF EXISTS device_id;
 
 -- 保养任务表
 CREATE TABLE IF NOT EXISTS maintenance_tasks (
@@ -118,6 +119,36 @@ CREATE TABLE IF NOT EXISTS maintenance_tasks (
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE maintenance_tasks ADD COLUMN IF NOT EXISTS has_abnormal BOOLEAN DEFAULT false;
+ALTER TABLE maintenance_tasks ADD COLUMN IF NOT EXISTS abnormal_work_order_id INTEGER;
+ALTER TABLE maintenance_tasks ADD COLUMN IF NOT EXISTS review_notes TEXT;
+ALTER TABLE maintenance_tasks ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP;
+ALTER TABLE maintenance_tasks ADD COLUMN IF NOT EXISTS reviewed_by INTEGER REFERENCES users(id);
+
+-- 保养内容项表
+CREATE TABLE IF NOT EXISTS maintenance_items (
+    id SERIAL PRIMARY KEY,
+    plan_id INTEGER REFERENCES maintenance_plans(id) ON DELETE CASCADE,
+    name VARCHAR(200) NOT NULL,
+    item_type VARCHAR(20) NOT NULL,
+    qualitative_options JSONB,
+    quantitative_settings JSONB,
+    sort_order INTEGER DEFAULT 0,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_maintenance_items_plan ON maintenance_items(plan_id);
+
+-- 保养计划设备绑定表
+CREATE TABLE IF NOT EXISTS maintenance_plan_devices (
+    plan_id INTEGER REFERENCES maintenance_plans(id) ON DELETE CASCADE,
+    device_id INTEGER REFERENCES devices(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (plan_id, device_id)
 );
 
 -- 工单表
@@ -158,15 +189,19 @@ CREATE TABLE IF NOT EXISTS spare_parts (
     part_no VARCHAR(50) UNIQUE NOT NULL,
     name VARCHAR(200) NOT NULL,
     spec JSONB DEFAULT '{}',
+    brand VARCHAR(100),
     supplier VARCHAR(200),
     stock_qty DECIMAL(10, 2) DEFAULT 0,
     min_stock DECIMAL(10, 2) DEFAULT 0,
-    unit VARCHAR(20) DEFAULT '个',
+    unit VARCHAR(20) DEFAULT 'pc',
     location VARCHAR(100),
     image_urls TEXT[] DEFAULT '{}',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS brand VARCHAR(100);
+ALTER TABLE spare_parts ALTER COLUMN unit SET DEFAULT 'pc';
 
 -- 备件出入库记录表
 CREATE TABLE IF NOT EXISTS part_movements (
