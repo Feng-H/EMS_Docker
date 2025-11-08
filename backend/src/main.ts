@@ -3,26 +3,43 @@ import { NestFactory } from '@nestjs/core';
 import type { Request } from 'express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { UsersService } from './modules/users/users.service';
 import { ConfigService } from '@nestjs/config';
-import { Role } from './modules/users/entities/role.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { UsersService } from './modules/users/users.service';
+import { Role } from './modules/users/entities/role.entity';
+import { User } from './modules/users/entities/user.entity';
+import * as bcrypt from 'bcrypt';
 
 async function ensureDefaultAdmin(app: INestApplication) {
   try {
     const usersService = app.get(UsersService);
     const configService = app.get(ConfigService);
     const roleRepository = app.get<Repository<Role>>(getRepositoryToken(Role));
+    const userRepository = app.get<Repository<User>>(getRepositoryToken(User));
 
     const username = configService.get<string>('DEFAULT_ADMIN_USERNAME', 'admin');
     const password = configService.get<string>('DEFAULT_ADMIN_PASSWORD', 'admin123');
     const name = configService.get<string>('DEFAULT_ADMIN_NAME', '系统管理员');
     const employeeNo = configService.get<string>('DEFAULT_ADMIN_EMPLOYEE_NO', 'ADMIN001');
     const roleName = configService.get<string>('DEFAULT_ADMIN_ROLE', 'admin');
+    const forceReset = configService.get<string>('DEFAULT_ADMIN_FORCE_RESET', 'false').toLowerCase() === 'true';
 
     const exists = await usersService.findByUsername(username);
     if (exists) {
+      if (forceReset) {
+        const role = await roleRepository.findOne({ where: { name: roleName } });
+        if (role) {
+          exists.role = role;
+          exists.roleId = role.id;
+        }
+        exists.name = name;
+        exists.employeeNo = employeeNo;
+        exists.isActive = true;
+        exists.passwordHash = await bcrypt.hash(password, 10);
+        await userRepository.save(exists);
+        console.log(`[bootstrap] 默认管理员账号已重置：${username}/${password}`);
+      }
       return;
     }
 
@@ -32,7 +49,7 @@ async function ensureDefaultAdmin(app: INestApplication) {
       return;
     }
 
-    await usersService.create({
+    const user = await usersService.create({
       username,
       password,
       name,
