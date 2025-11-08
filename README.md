@@ -31,7 +31,7 @@ docker compose -f docker-compose.prod.yml up -d
 
 - **JwtStrategy requires a secret or key**：说明容器未获取 `JWT_SECRET`，请在部署环境中设置该变量或在 Compose 中提供安全的默认值。
 - **Bind for 0.0.0.0:80 failed: port is already allocated**：宿主机 80 端口已被占用，可先释放占用端口，或修改 Compose 映射（如 `8080:80`）后重新启动。
-- **默认管理员账号**：后端启动时会自动确保存在 `admin / admin123`。可用 `DEFAULT_ADMIN_*` 环境变量覆盖用户名、密码等信息，若需强制重置已存在的账号，可设置 `DEFAULT_ADMIN_FORCE_RESET=true` 后重启后端服务。
+- **默认管理员账号**：`docker-compose.prod.yml` 默认将 `DEFAULT_ADMIN_*` 环境变量注入后端，并开启 `DEFAULT_ADMIN_FORCE_RESET=true`，确保每次部署后都存在 `admin / admin123`（可自行覆盖为更安全的凭证）。
 
 ## 许可与开发说明
 
