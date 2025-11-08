@@ -78,9 +78,12 @@ async function ensureDatabaseSchema(app: INestApplication) {
         WHERE table_name = 'maintenance_tasks' AND column_name = 'attachments' AND data_type = 'ARRAY'
       ) THEN
         ALTER TABLE maintenance_tasks DROP COLUMN attachments;
+        ALTER TABLE maintenance_tasks ADD COLUMN attachments TEXT DEFAULT '' NOT NULL;
       END IF;
     END $$`,
     `ALTER TABLE maintenance_tasks ADD COLUMN IF NOT EXISTS attachments TEXT DEFAULT ''`,
+    `ALTER TABLE maintenance_tasks ALTER COLUMN attachments SET DEFAULT ''`,
+    `ALTER TABLE maintenance_tasks ALTER COLUMN attachments TYPE TEXT USING COALESCE(attachments, '')`,
 
     // 工单相关
     `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS reporter_id INTEGER`,
@@ -100,6 +103,19 @@ async function ensureDatabaseSchema(app: INestApplication) {
     `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS fault_category VARCHAR(100)`,
     `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS fault_cause TEXT`,
     `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS solution TEXT`,
+    `DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'work_orders' AND column_name = 'attachments' AND data_type = 'ARRAY'
+      ) THEN
+        ALTER TABLE work_orders DROP COLUMN attachments;
+        ALTER TABLE work_orders ADD COLUMN attachments TEXT DEFAULT '' NOT NULL;
+      END IF;
+    END $$`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS attachments TEXT DEFAULT ''`,
+    `ALTER TABLE work_orders ALTER COLUMN attachments SET DEFAULT ''`,
+    `ALTER TABLE work_orders ALTER COLUMN attachments TYPE TEXT USING COALESCE(attachments, '')`,
 
     // 备件相关
     `ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS brand VARCHAR(100)`,

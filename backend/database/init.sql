@@ -165,7 +165,7 @@ CREATE TABLE IF NOT EXISTS work_orders (
     started_at TIMESTAMP,
     finished_at TIMESTAMP,
     accepted_at TIMESTAMP,
-    attachments TEXT[] DEFAULT '{}',
+    attachments TEXT DEFAULT '',
     fault_category VARCHAR(100),
     fault_cause TEXT,
     solution TEXT,
@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS work_order_comments (
     work_order_id INTEGER REFERENCES work_orders(id) ON DELETE CASCADE,
     user_id INTEGER REFERENCES users(id),
     content TEXT NOT NULL,
-    attachments TEXT[] DEFAULT '{}',
+    attachments TEXT DEFAULT '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -226,7 +226,7 @@ CREATE TABLE IF NOT EXISTS repair_records (
     labor_cost DECIMAL(10, 2),
     material_cost DECIMAL(10, 2),
     total_cost DECIMAL(10, 2),
-    attachments TEXT[] DEFAULT '{}',
+    attachments TEXT DEFAULT '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
