@@ -5,11 +5,85 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { UsersService } from './modules/users/users.service';
 import { Role } from './modules/users/entities/role.entity';
 import { User } from './modules/users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
+
+async function ensureDatabaseSchema(app: INestApplication) {
+  const dataSource = app.get(DataSource);
+  const queries = [
+    // 保养计划相关
+    `ALTER TABLE maintenance_plans DROP COLUMN IF EXISTS device_id`,
+    `ALTER TABLE maintenance_plans ADD COLUMN IF NOT EXISTS title VARCHAR(200)`,
+    `ALTER TABLE maintenance_plans ADD COLUMN IF NOT EXISTS description TEXT`,
+    `ALTER TABLE maintenance_plans ADD COLUMN IF NOT EXISTS frequency_type VARCHAR(20)`,
+    `ALTER TABLE maintenance_plans ADD COLUMN IF NOT EXISTS frequency_value INTEGER`,
+    `ALTER TABLE maintenance_plans ADD COLUMN IF NOT EXISTS next_due_at TIMESTAMP`,
+    `ALTER TABLE maintenance_plans ADD COLUMN IF NOT EXISTS assigned_group_id INTEGER`,
+    `ALTER TABLE maintenance_plans ADD COLUMN IF NOT EXISTS assigned_to INTEGER`,
+    `ALTER TABLE maintenance_plans ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true`,
+    `ALTER TABLE maintenance_plans ADD COLUMN IF NOT EXISTS created_by INTEGER`,
+    `CREATE TABLE IF NOT EXISTS maintenance_items (
+      id SERIAL PRIMARY KEY,
+      plan_id INTEGER REFERENCES maintenance_plans(id) ON DELETE CASCADE,
+      name VARCHAR(200) NOT NULL,
+      item_type VARCHAR(20) NOT NULL,
+      qualitative_options JSONB,
+      quantitative_settings JSONB,
+      sort_order INTEGER DEFAULT 0,
+      description TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_maintenance_items_plan ON maintenance_items(plan_id)`,
+    `CREATE TABLE IF NOT EXISTS maintenance_plan_devices (
+      plan_id INTEGER REFERENCES maintenance_plans(id) ON DELETE CASCADE,
+      device_id INTEGER REFERENCES devices(id) ON DELETE CASCADE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (plan_id, device_id)
+    )`,
+
+    // 保养任务相关
+    `ALTER TABLE maintenance_tasks ADD COLUMN IF NOT EXISTS has_abnormal BOOLEAN DEFAULT false`,
+    `ALTER TABLE maintenance_tasks ADD COLUMN IF NOT EXISTS abnormal_work_order_id INTEGER`,
+    `ALTER TABLE maintenance_tasks ADD COLUMN IF NOT EXISTS review_notes TEXT`,
+    `ALTER TABLE maintenance_tasks ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP`,
+    `ALTER TABLE maintenance_tasks ADD COLUMN IF NOT EXISTS reviewed_by INTEGER`,
+
+    // 工单相关
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS reporter_id INTEGER`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS device_id INTEGER`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS title VARCHAR(200)`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS description TEXT`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'normal'`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'created'`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS assigned_to INTEGER`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS started_at TIMESTAMP`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS finished_at TIMESTAMP`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMP`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS reported_at TIMESTAMP`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS response_time INTEGER`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS repair_time INTEGER`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS attachments TEXT[] DEFAULT '{}'`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS fault_category VARCHAR(100)`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS fault_cause TEXT`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS solution TEXT`,
+
+    // 备件相关
+    `ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS brand VARCHAR(100)`,
+    `ALTER TABLE spare_parts ALTER COLUMN unit SET DEFAULT 'pc'`,
+  ];
+
+  for (const query of queries) {
+    try {
+      await dataSource.query(query);
+    } catch (error) {
+      console.error('[bootstrap] 数据库结构同步失败:', query, error.message || error);
+    }
+  }
+}
 
 async function ensureDefaultAdmin(app: INestApplication) {
   try {
@@ -128,6 +202,7 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   await app.init();
+  await ensureDatabaseSchema(app);
   await ensureDefaultAdmin(app);
 
   const port = process.env.PORT || 3000;
