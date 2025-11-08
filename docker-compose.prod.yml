@@ -64,7 +64,7 @@ services:
       DB_NAME: ${DB_NAME:-ems_db}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:-ems_prod_secret_change_me}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
