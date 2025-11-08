@@ -44,6 +44,26 @@ async function ensureDatabaseSchema(app: INestApplication) {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (plan_id, device_id)
     )`,
+    `DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'maintenance_items' AND column_name = 'qualitative_options'
+      ) THEN
+        ALTER TABLE maintenance_items RENAME COLUMN qualitative_options TO "qualitativeOptions";
+      END IF;
+    END $$`,
+    `DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'maintenance_items' AND column_name = 'quantitative_settings'
+      ) THEN
+        ALTER TABLE maintenance_items RENAME COLUMN quantitative_settings TO "quantitativeSettings";
+      END IF;
+    END $$`,
+    `ALTER TABLE maintenance_items ADD COLUMN IF NOT EXISTS "qualitativeOptions" JSONB`,
+    `ALTER TABLE maintenance_items ADD COLUMN IF NOT EXISTS "quantitativeSettings" JSONB`,
 
     // 保养任务相关
     `ALTER TABLE maintenance_tasks ADD COLUMN IF NOT EXISTS has_abnormal BOOLEAN DEFAULT false`,
@@ -51,6 +71,16 @@ async function ensureDatabaseSchema(app: INestApplication) {
     `ALTER TABLE maintenance_tasks ADD COLUMN IF NOT EXISTS review_notes TEXT`,
     `ALTER TABLE maintenance_tasks ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP`,
     `ALTER TABLE maintenance_tasks ADD COLUMN IF NOT EXISTS reviewed_by INTEGER`,
+    `DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'maintenance_tasks' AND column_name = 'attachments' AND data_type = 'ARRAY'
+      ) THEN
+        ALTER TABLE maintenance_tasks DROP COLUMN attachments;
+      END IF;
+    END $$`,
+    `ALTER TABLE maintenance_tasks ADD COLUMN IF NOT EXISTS attachments TEXT DEFAULT ''`,
 
     // 工单相关
     `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS reporter_id INTEGER`,
