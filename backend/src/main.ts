@@ -13,6 +13,7 @@ import * as bcrypt from 'bcrypt';
 
 async function ensureDefaultAdmin(app: INestApplication) {
   try {
+    console.log('[bootstrap] 正在检查默认管理员账号配置...');
     const usersService = app.get(UsersService);
     const configService = app.get(ConfigService);
     const roleRepository = app.get<Repository<Role>>(getRepositoryToken(Role));
@@ -26,13 +27,22 @@ async function ensureDefaultAdmin(app: INestApplication) {
     const forceReset = configService.get<string>('DEFAULT_ADMIN_FORCE_RESET', 'false').toLowerCase() === 'true';
 
     const exists = await usersService.findByUsername(username);
+    let role = await roleRepository.findOne({ where: { name: roleName } });
+
     if (exists) {
       if (forceReset) {
-        const role = await roleRepository.findOne({ where: { name: roleName } });
-        if (role) {
-          exists.role = role;
-          exists.roleId = role.id;
+        if (!role) {
+          console.warn(`[bootstrap] 未找到名为 ${roleName} 的角色，正在自动创建默认角色...`);
+          role = roleRepository.create({
+            name: roleName,
+            description: '系统管理员',
+            permissions: { all: true },
+          });
+          role = await roleRepository.save(role);
+          console.log(`[bootstrap] 已创建默认角色：${roleName}`);
         }
+        exists.role = role;
+        exists.roleId = role?.id;
         exists.name = name;
         exists.employeeNo = employeeNo;
         exists.isActive = true;
@@ -45,8 +55,14 @@ async function ensureDefaultAdmin(app: INestApplication) {
 
     const role = await roleRepository.findOne({ where: { name: roleName } });
     if (!role) {
-      console.warn(`[bootstrap] 未找到名为 ${roleName} 的角色，默认管理员未创建`);
-      return;
+      console.warn(`[bootstrap] 未找到名为 ${roleName} 的角色，正在自动创建默认角色...`);
+      role = roleRepository.create({
+        name: roleName,
+        description: '系统管理员',
+        permissions: { all: true },
+      });
+      role = await roleRepository.save(role);
+      console.log(`[bootstrap] 已创建默认角色：${roleName}`);
     }
 
     const user = await usersService.create({
@@ -112,6 +128,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
+  await app.init();
   await ensureDefaultAdmin(app);
 
   const port = process.env.PORT || 3000;
