@@ -16,6 +16,7 @@ export interface WorkOrder {
   startedAt?: string;
   finishedAt?: string;
   acceptedAt?: string;
+  contact?: string;
   reportedAt?: string; // 报修时间
   responseTime?: number; // 响应时间（分钟）
   repairTime?: number; // 维修时间（分钟）

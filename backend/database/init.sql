@@ -162,6 +162,7 @@ CREATE TABLE IF NOT EXISTS work_orders (
     priority VARCHAR(20) DEFAULT 'normal', -- 'low', 'normal', 'high', 'urgent'
     status VARCHAR(20) DEFAULT 'created', -- 'created', 'assigned', 'accepted', 'in_progress', 'pending_acceptance', 'completed', 'closed'
     assigned_to INTEGER REFERENCES users(id),
+    contact VARCHAR(100),
     started_at TIMESTAMP,
     finished_at TIMESTAMP,
     accepted_at TIMESTAMP,

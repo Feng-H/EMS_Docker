@@ -21,6 +21,11 @@ export class CreateWorkOrderDto {
   @IsOptional()
   priority?: string;
 
+  @ApiProperty({ description: '联系方式', required: false })
+  @IsString()
+  @IsOptional()
+  contact?: string;
+
   @ApiProperty({ description: '故障分类', required: false })
   @IsString()
   @IsOptional()

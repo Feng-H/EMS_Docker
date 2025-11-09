@@ -93,6 +93,7 @@ async function ensureDatabaseSchema(app: INestApplication) {
     `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'normal'`,
     `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'created'`,
     `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS assigned_to INTEGER`,
+    `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS contact VARCHAR(100)`,
     `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS started_at TIMESTAMP`,
     `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS finished_at TIMESTAMP`,
     `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMP`,

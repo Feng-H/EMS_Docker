@@ -41,6 +41,9 @@ export class WorkOrder extends BaseEntity {
   @JoinColumn({ name: 'assigned_to' })
   assignee: User;
 
+  @Column({ length: 100, nullable: true })
+  contact: string;
+
   @Column({ name: 'started_at', type: 'timestamp', nullable: true })
   startedAt: Date;
 

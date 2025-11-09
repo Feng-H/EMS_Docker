@@ -22,6 +22,7 @@
       </el-descriptions-item>
       <el-descriptions-item label="报修人">{{ order.reporter?.name || '-' }}</el-descriptions-item>
       <el-descriptions-item label="负责人">{{ order.assignee?.name || '未分配' }}</el-descriptions-item>
+      <el-descriptions-item label="联系方式">{{ order.contact || '-' }}</el-descriptions-item>
       <el-descriptions-item label="故障分类">{{ order.faultCategory || '-' }}</el-descriptions-item>
       <el-descriptions-item label="创建时间">{{ order.created_at }}</el-descriptions-item>
       <el-descriptions-item label="故障描述" :span="2">
