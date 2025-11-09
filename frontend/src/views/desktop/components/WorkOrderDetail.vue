@@ -87,6 +87,19 @@
       <template #header>
         <span>维修执行</span>
       </template>
+      <div v-if="attachmentImages.length" class="execute-attachments">
+        <div class="section-subtitle">报修照片</div>
+        <div class="attachment-grid execute">
+          <el-image
+            v-for="(src, index) in attachmentImages"
+            :key="`execute-${index}`"
+            :src="src"
+            fit="cover"
+            :preview-src-list="attachmentPreviewList"
+            :initial-index="index"
+          />
+        </div>
+      </div>
       <el-form :model="executeForm" :rules="executeRules" ref="executeFormRef" label-width="100px">
         <el-form-item label="故障原因" prop="faultCause">
           <el-input v-model="executeForm.faultCause" type="textarea" :rows="3" placeholder="请输入故障原因（必填）" />
@@ -545,6 +558,33 @@ const formatTime = (minutes: number) => {
   border: 1px solid #ebeef5;
   overflow: hidden;
   background: #f5f7fa;
+}
+
+.attachment-grid.execute :deep(.el-image) {
+  width: 90px;
+  height: 90px;
+}
+
+.section-subtitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: #606266;
+  margin-bottom: 8px;
+}
+
+.execute-attachments {
+  margin-bottom: 16px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.action-buttons :deep(.el-button) {
+  flex: 1;
+  min-width: 140px;
 }
 </style>
 
