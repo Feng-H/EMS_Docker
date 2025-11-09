@@ -142,8 +142,8 @@
             :auto-upload="false"
             list-type="picture-card"
             :limit="5"
-            :on-change="handleReportUploadChange"
-            :on-remove="handleReportFileRemove"
+            @change="handleReportUploadChange"
+            @remove="handleReportFileRemove"
           >
             <el-icon><Plus /></el-icon>
           </el-upload>
@@ -354,6 +354,7 @@ const handleSubmitReport = async () => {
         });
         ElMessage.success('报修成功');
         reportDialogVisible.value = false;
+        reportUploadList.value = [];
         handleRefresh();
       } catch (error: any) {
         ElMessage.error(error.response?.data?.message || '报修失败');

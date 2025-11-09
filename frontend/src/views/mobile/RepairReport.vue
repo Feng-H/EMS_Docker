@@ -59,8 +59,8 @@
           multiple
           :limit="3"
           :file-list="uploadFileList"
-          :on-change="handleUploadChange"
-          :on-remove="handleFileRemove"
+          @change="handleUploadChange"
+          @remove="handleFileRemove"
           accept="image/*"
         >
           <el-button type="primary" plain>选择照片</el-button>
@@ -197,6 +197,8 @@ const handleSubmit = () => {
         attachments: form.attachments,
       });
       ElMessage.success('报修已提交');
+      form.attachments = [];
+      uploadFileList.value = [];
       router.push('/mobile/work-orders');
     } catch (error: any) {
       console.error('提交报修失败:', error);
