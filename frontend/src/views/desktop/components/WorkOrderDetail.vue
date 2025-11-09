@@ -50,6 +50,20 @@
       </el-descriptions-item>
     </el-descriptions>
 
+    <div class="attachment-section" v-if="attachmentImages.length">
+      <h3>报修附件</h3>
+      <div class="attachment-grid">
+        <el-image
+          v-for="(src, index) in attachmentImages"
+          :key="index"
+          :src="src"
+          fit="cover"
+          :preview-src-list="attachmentPreviewList"
+          :initial-index="index"
+        />
+      </div>
+    </div>
+
     <div class="action-buttons" style="margin-top: 20px">
       <template v-if="order.status === 'assigned'">
         <el-button type="success" @click="handleAccept">接受工单</el-button>
@@ -127,7 +141,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue';
+import { ref, reactive, onMounted, watch, computed } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Plus, Lock } from '@element-plus/icons-vue';
 import { workOrderService, type WorkOrder } from '@/services/workOrders';
@@ -152,6 +166,24 @@ const executeForm = reactive({
 
 const sparePartOptions = ref<SparePart[]>([]);
 const usedParts = ref<any[]>([]); // 已领用的备件列表
+const attachmentImages = computed(() => {
+  if (!props.order?.attachments || props.order.attachments.length === 0) {
+    return [] as string[];
+  }
+  return props.order.attachments
+    .filter((item) => item && item.trim().length > 0)
+    .map((item) => {
+      if (item.startsWith('data:')) {
+        return item;
+      }
+      const [mime, data] = item.split(':');
+      if (data) {
+        return `data:${mime};base64,${data}`;
+      }
+      return item;
+    });
+});
+const attachmentPreviewList = computed(() => attachmentImages.value);
 
 const loadSpareParts = async () => {
   try {
@@ -486,6 +518,32 @@ const formatTime = (minutes: number) => {
 <style scoped>
 .work-order-detail {
   padding: 10px;
+}
+
+.attachment-section {
+  margin-top: 20px;
+}
+
+.attachment-section h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.attachment-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.attachment-grid :deep(.el-image) {
+  width: 120px;
+  height: 120px;
+  border-radius: 6px;
+  border: 1px solid #ebeef5;
+  overflow: hidden;
+  background: #f5f7fa;
 }
 </style>
 

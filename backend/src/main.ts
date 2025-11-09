@@ -77,8 +77,8 @@ async function ensureDatabaseSchema(app: INestApplication) {
         SELECT 1 FROM information_schema.columns
         WHERE table_name = 'maintenance_tasks' AND column_name = 'attachments' AND data_type = 'ARRAY'
       ) THEN
-        ALTER TABLE maintenance_tasks DROP COLUMN attachments;
-        ALTER TABLE maintenance_tasks ADD COLUMN attachments TEXT DEFAULT '' NOT NULL;
+        ALTER TABLE maintenance_tasks ALTER COLUMN attachments DROP DEFAULT;
+        ALTER TABLE maintenance_tasks ALTER COLUMN attachments TYPE TEXT USING array_to_string(attachments, ',');
       END IF;
     END $$`,
     `ALTER TABLE maintenance_tasks ADD COLUMN IF NOT EXISTS attachments TEXT DEFAULT ''`,
@@ -109,8 +109,8 @@ async function ensureDatabaseSchema(app: INestApplication) {
         SELECT 1 FROM information_schema.columns
         WHERE table_name = 'work_orders' AND column_name = 'attachments' AND data_type = 'ARRAY'
       ) THEN
-        ALTER TABLE work_orders DROP COLUMN attachments;
-        ALTER TABLE work_orders ADD COLUMN attachments TEXT DEFAULT '' NOT NULL;
+        ALTER TABLE work_orders ALTER COLUMN attachments DROP DEFAULT;
+        ALTER TABLE work_orders ALTER COLUMN attachments TYPE TEXT USING array_to_string(attachments, ',');
       END IF;
     END $$`,
     `ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS attachments TEXT DEFAULT ''`,

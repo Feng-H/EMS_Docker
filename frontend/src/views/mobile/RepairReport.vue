@@ -58,14 +58,21 @@
           :auto-upload="false"
           multiple
           :limit="3"
+          :file-list="uploadFileList"
           :on-change="handleUploadChange"
+          :on-remove="handleFileRemove"
           accept="image/*"
         >
           <el-button type="primary" plain>选择照片</el-button>
           <template #tip>
-            <div class="upload-tip">可上传现场照片（最多 3 张），实际上传逻辑待接入</div>
+            <div class="upload-tip">可上传现场照片（最多 3 张）</div>
           </template>
         </el-upload>
+        <div v-if="previewImages.length" class="preview-list">
+          <div v-for="(url, index) in previewImages" :key="index" class="preview-item">
+            <img :src="url" alt="报修照片预览" />
+          </div>
+        </div>
       </el-form-item>
 
       <div class="bottom-actions">
@@ -78,10 +85,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { ArrowLeft } from '@element-plus/icons-vue';
+import type { UploadFile, UploadFiles } from 'element-plus/es/components/upload/src/upload.type';
 import { deviceService, type Device } from '@/services/devices';
 import { workOrderService } from '@/services/workOrders';
 
@@ -94,7 +102,7 @@ const form = reactive({
   description: '',
   priority: 'normal',
   contact: '',
-  attachments: [] as any[],
+  attachments: [] as string[],
 });
 
 const rules = {
@@ -104,7 +112,14 @@ const rules = {
 };
 
 const submitting = ref(false);
+const uploadFileList = ref<UploadFiles>([]);
 const deviceOptions = ref<Device[]>([]);
+const previewImages = computed(() =>
+  form.attachments.map((item) => {
+    const [mime, data] = item.split(':');
+    return `data:${mime};base64,${data}`;
+  }),
+);
 
 const goBack = () => {
   router.back();
@@ -125,9 +140,45 @@ const handleDeviceDropdown = (visible: boolean) => {
   }
 };
 
-const handleUploadChange = () => {
-  // TODO: 接入实际上传逻辑
-  ElMessage.info('照片上传功能正待接入');
+const readFileAsBase64 = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+const syncAttachments = async (fileList: UploadFiles) => {
+  const validFiles = fileList.filter((item) => item.raw).slice(0, 3);
+  try {
+    const base64List = await Promise.all(
+      validFiles.map(async (item) => {
+        const base64 = await readFileAsBase64(item.raw as File);
+        const mime = (item.raw as File).type || 'application/octet-stream';
+        return `${mime}:${base64}`;
+      }),
+    );
+    form.attachments = base64List;
+  } catch (error) {
+    console.error('读取附件失败:', error);
+    ElMessage.error('读取照片失败，请重试');
+    form.attachments = [];
+    uploadFileList.value = [];
+  }
+};
+
+const handleUploadChange = async (_file: UploadFile, fileList: UploadFiles) => {
+  uploadFileList.value = fileList;
+  await syncAttachments(fileList);
+};
+
+const handleFileRemove = async (_file: UploadFile, fileList: UploadFiles) => {
+  uploadFileList.value = fileList;
+  await syncAttachments(fileList);
 };
 
 const handleSubmit = () => {
@@ -143,6 +194,7 @@ const handleSubmit = () => {
         description: form.description,
         priority: form.priority,
         contact: form.contact,
+        attachments: form.attachments,
       });
       ElMessage.success('报修已提交');
       router.push('/mobile/work-orders');
@@ -203,6 +255,30 @@ onMounted(() => {
   font-size: 12px;
   color: #909399;
   margin-top: 6px;
+}
+
+.preview-list {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.preview-item {
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #ebeef5;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .bottom-actions {

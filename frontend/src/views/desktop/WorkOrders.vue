@@ -137,11 +137,13 @@
         </el-form-item>
         <el-form-item label="附件">
           <el-upload
-            v-model:file-list="reportForm.attachments"
+            :file-list="reportUploadList"
             action="#"
             :auto-upload="false"
             list-type="picture-card"
             :limit="5"
+            :on-change="handleReportUploadChange"
+            :on-remove="handleReportFileRemove"
           >
             <el-icon><Plus /></el-icon>
           </el-upload>
@@ -199,9 +201,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus, Download } from '@element-plus/icons-vue';
+import type { UploadFile, UploadFiles } from 'element-plus/es/components/upload/src/upload.type';
 import { workOrderService, type WorkOrder } from '@/services/workOrders';
 import { deviceService } from '@/services/devices';
 import { userService } from '@/services/users';
@@ -228,8 +231,9 @@ const reportForm = reactive({
   description: '',
   faultCategory: '',
   priority: 'normal',
-  attachments: [] as any[],
+  attachments: [] as string[],
 });
+const reportUploadList = ref<UploadFiles>([]);
 
 const editForm = reactive({
   title: '',
@@ -268,6 +272,47 @@ const loadUsers = async () => {
   }
 };
 
+const readFileAsBase64 = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+const syncReportAttachments = async (fileList: UploadFiles) => {
+  const validFiles = fileList.filter((item) => item.raw).slice(0, 5);
+  try {
+    const base64List = await Promise.all(
+      validFiles.map(async (item) => {
+        const base64 = await readFileAsBase64(item.raw as File);
+        const mime = (item.raw as File).type || 'application/octet-stream';
+        return `${mime}:${base64}`;
+      }),
+    );
+    reportForm.attachments = base64List;
+  } catch (error) {
+    console.error('读取附件失败:', error);
+    ElMessage.error('读取附件失败，请重试');
+    reportForm.attachments = [];
+    reportUploadList.value = [];
+  }
+};
+
+const handleReportUploadChange = async (_file: UploadFile, fileList: UploadFiles) => {
+  reportUploadList.value = fileList;
+  await syncReportAttachments(fileList);
+};
+
+const handleReportFileRemove = async (_file: UploadFile, fileList: UploadFiles) => {
+  reportUploadList.value = fileList;
+  await syncReportAttachments(fileList);
+};
+
 const handleTabChange = (name: string) => {
   // 标签切换时刷新列表由子组件处理
 };
@@ -281,6 +326,7 @@ const handleReport = () => {
     priority: 'normal',
     attachments: [],
   });
+  reportUploadList.value = [];
   reportDialogVisible.value = true;
 };
 
@@ -298,14 +344,13 @@ const handleSubmitReport = async () => {
     if (valid) {
       submitting.value = true;
       try {
-        const attachments = reportForm.attachments.map((file: any) => file.url || file.name);
         await workOrderService.create({
           deviceId: reportForm.deviceId,
           title: reportForm.title,
           description: reportForm.description,
           faultCategory: reportForm.faultCategory || undefined,
           priority: reportForm.priority,
-          attachments,
+          attachments: reportForm.attachments,
         });
         ElMessage.success('报修成功');
         reportDialogVisible.value = false;
