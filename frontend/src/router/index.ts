@@ -100,12 +100,6 @@ const router = createRouter({
           component: () => import('@/views/mobile/RepairReport.vue'),
           meta: { title: '设备报修' },
         },
-        {
-          path: 'work-orders/history',
-          name: 'MobileRepairHistory',
-          component: MobileRepairHistory,
-          meta: { title: '维修记录' },
-        },
       ],
     },
     {

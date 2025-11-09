@@ -100,6 +100,19 @@
           />
         </div>
       </div>
+      <div v-if="usedPartAttachments.length" class="execute-attachments">
+        <div class="section-subtitle">现场补充照片</div>
+        <div class="attachment-grid execute">
+          <el-image
+            v-for="(src, index) in usedPartAttachments"
+            :key="`execute-extra-${index}`"
+            :src="src"
+            fit="cover"
+            :preview-src-list="usedPartAttachments"
+            :initial-index="index"
+          />
+        </div>
+      </div>
       <el-form :model="executeForm" :rules="executeRules" ref="executeFormRef" label-width="100px">
         <el-form-item label="故障原因" prop="faultCause">
           <el-input v-model="executeForm.faultCause" type="textarea" :rows="3" placeholder="请输入故障原因（必填）" />
@@ -180,11 +193,9 @@ const executeForm = reactive({
 
 const sparePartOptions = ref<SparePart[]>([]);
 const usedParts = ref<any[]>([]); // 已领用的备件列表
-const attachmentImages = computed(() => {
-  if (!props.order?.attachments || props.order.attachments.length === 0) {
-    return [] as string[];
-  }
-  return props.order.attachments
+const normalizeAttachments = (attachments?: string[]) => {
+  if (!attachments || attachments.length === 0) return [];
+  return attachments
     .filter((item) => item && item.trim().length > 0)
     .map((item) => {
       if (item.startsWith('data:')) {
@@ -196,8 +207,11 @@ const attachmentImages = computed(() => {
       }
       return item;
     });
-});
+};
+
+const attachmentImages = computed(() => normalizeAttachments(props.order.attachments));
 const attachmentPreviewList = computed(() => attachmentImages.value);
+const usedPartAttachments = computed(() => normalizeAttachments(props.order?.result?.attachments));
 
 const loadSpareParts = async () => {
   try {

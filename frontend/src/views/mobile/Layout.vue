@@ -60,11 +60,6 @@ const navItems: NavItem[] = [
     path: '/mobile/work-orders/report',
     isActive: (path) => path.startsWith('/mobile/work-orders/report'),
   },
-  {
-    label: '维修记录',
-    path: '/mobile/work-orders/history',
-    isActive: (path) => path.startsWith('/mobile/work-orders/history'),
-  },
 ];
 
 const currentPath = computed(() => route.path);

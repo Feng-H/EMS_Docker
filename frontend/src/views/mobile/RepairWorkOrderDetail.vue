@@ -202,6 +202,31 @@
         </div>
       </section>
 
+      <section class="section" v-if="previewImageList.length">
+        <h3>报修照片</h3>
+        <div class="image-grid">
+          <el-image
+            v-for="(src, index) in previewImageList"
+            :key="`report-${index}`"
+            :src="src"
+            fit="cover"
+            :preview-src-list="previewImageList"
+            :initial-index="index"
+          />
+        </div>
+      </section>
+
+      <div v-if="executeExtraImages.length" class="image-grid" style="margin-bottom: 12px">
+        <el-image
+          v-for="(src, index) in executeExtraImages"
+          :key="`execute-${index}`"
+          :src="src"
+          fit="cover"
+          :preview-src-list="executeExtraImages"
+          :initial-index="index"
+        />
+      </div>
+
       <div class="bottom-actions" v-if="canAccept || canStart">
         <template v-if="canAccept">
           <el-button type="primary" size="large" :loading="actionLoading" @click="acceptOrder">接受工单</el-button>
@@ -526,6 +551,23 @@ watch(
   }
 );
 
+const normalizeAttachments = (attachments?: string[]) => {
+  if (!attachments || attachments.length === 0) return [] as string[];
+  return attachments
+    .filter((item) => item && item.trim().length > 0)
+    .map((item) => {
+      if (item.startsWith('data:')) return item;
+      const [mime, data] = item.split(':');
+      return data ? `data:${mime};base64,${data}` : item;
+    });
+};
+
+const previewImageList = computed(() => normalizeAttachments(order.value?.attachments));
+const executeExtraImages = computed(() => {
+  const extra = (order.value as any)?.result?.attachments;
+  return normalizeAttachments(extra);
+});
+
 onMounted(() => {
   loadOrder();
 });
@@ -693,6 +735,21 @@ onMounted(() => {
   text-align: center;
   padding: 40px 0;
   color: #909399;
+}
+
+.image-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.image-grid :deep(.el-image) {
+  width: 100px;
+  height: 100px;
+  border-radius: 6px;
+  border: 1px solid #ebeef5;
+  overflow: hidden;
+  background: #f5f7fa;
 }
 
 @media (max-width: 480px) {
