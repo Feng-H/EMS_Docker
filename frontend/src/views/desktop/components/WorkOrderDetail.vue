@@ -67,18 +67,18 @@
 
     <div class="action-buttons" style="margin-top: 20px">
       <template v-if="order.status === 'assigned'">
-        <el-button type="success" @click="handleAccept">接受工单</el-button>
-        <el-button type="warning" @click="handleStart">开始执行</el-button>
+        <el-button type="success" class="aligned-btn" @click="handleAccept">接受工单</el-button>
+        <el-button type="warning" class="aligned-btn" @click="handleStart">开始执行</el-button>
       </template>
       <template v-if="order.status === 'accepted'">
-        <el-button type="warning" @click="handleStart">开始执行</el-button>
+        <el-button type="warning" class="aligned-btn" @click="handleStart">开始执行</el-button>
       </template>
       <template v-if="order.status === 'in_progress'">
-        <el-button type="success" @click="handleComplete">完成维修</el-button>
+        <el-button type="success" class="aligned-btn" @click="handleComplete">完成维修</el-button>
       </template>
       <template v-if="order.status === 'pending_acceptance'">
-        <el-button type="success" @click="handleAcceptance(true)">验收通过</el-button>
-        <el-button type="danger" @click="handleAcceptance(false)">驳回</el-button>
+        <el-button type="success" class="aligned-btn" @click="handleAcceptance(true)">验收通过</el-button>
+        <el-button type="danger" class="aligned-btn" @click="handleAcceptance(false)">驳回返工</el-button>
       </template>
     </div>
 
@@ -160,7 +160,12 @@
           </el-button>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSubmitExecute" :loading="submitting">保存</el-button>
+        <el-button type="primary" class="aligned-btn" @click="handleSubmitExecute" :loading="submitting">
+          保存执行信息
+        </el-button>
+        <el-button type="success" class="aligned-btn" @click="handleComplete" :loading="submitting">
+          完成维修
+        </el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -596,9 +601,15 @@ const formatTime = (minutes: number) => {
   flex-wrap: wrap;
 }
 
-.action-buttons :deep(.el-button) {
+.action-buttons :deep(.el-button),
+.execute-btn {
   flex: 1;
   min-width: 140px;
+}
+
+.aligned-btn {
+  flex: 1;
+  min-width: 160px;
 }
 </style>
 
