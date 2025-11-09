@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { isMobile } from '@/utils/device';
 import { useAuthStore } from '@/store/auth';
+import MobileRepairWorkOrders from '@/views/mobile/RepairWorkOrders.vue';
+import MobileRepairHistory from '@/views/mobile/RepairHistory.vue';
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -83,7 +85,7 @@ const router = createRouter({
         {
           path: 'work-orders',
           name: 'MobileWorkOrders',
-          component: () => import('@/views/mobile/RepairWorkOrders.vue'),
+          component: MobileRepairWorkOrders,
           meta: { title: '维修工单' },
         },
         {
@@ -101,7 +103,7 @@ const router = createRouter({
         {
           path: 'work-orders/history',
           name: 'MobileRepairHistory',
-          component: () => import('@/views/mobile/RepairHistory.vue'),
+          component: MobileRepairHistory,
           meta: { title: '维修记录' },
         },
       ],
